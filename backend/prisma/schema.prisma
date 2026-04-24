@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  brandName   String
+  primaryColor String  @default("#2563eb")
+  properties  Property[]
+  users       User[]
+  ads         Ad[]
+  leads       Lead[]
+  createdAt   DateTime  @default(now())
+}
+
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String
+  role        UserRole  @default(USER)
+  password    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  tenantId    String
+  leads       Lead[]
+  bookings    Booking[]
+  notes       Note[]
+  createdAt   DateTime  @default(now())
+}
+
+enum UserRole {
+  ADMIN
+  SALES
+  USER
+}
+
+model Amenity {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  icon      String?
+  properties Property[]
+}
+
+model Property {
+  id            String      @id @default(cuid())
+  title         String
+  slug          String      @unique
+  description   String      @db.Text
+  address       String
+  city          String
+  country       String
+  pricePerNight Float
+  bedrooms      Int
+  bathrooms     Int
+  guests        Int
+  images        String[]
+  amenities     Amenity[]
+  availability  Availability[]
+  bookings      Booking[]
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  tenantId      String
+  createdAt     DateTime    @default(now())
+}
+
+model Availability {
+  id         String   @id @default(cuid())
+  property   Property @relation(fields: [propertyId], references: [id])
+  propertyId String
+  date       DateTime
+  blocked    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([propertyId, date])
+}
+
+model Booking {
+  id             String   @id @default(cuid())
+  property       Property @relation(fields: [propertyId], references: [id])
+  propertyId     String
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  checkIn        DateTime
+  checkOut       DateTime
+  guests         Int
+  totalPrice     Float
+  status         BookingStatus @default(PENDING)
+  paymentIntent  String?
+  createdAt      DateTime @default(now())
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model Lead {
+  id           String    @id @default(cuid())
+  name         String
+  phone        String
+  interests    String
+  status       LeadStatus @default(NEW)
+  assignedTo   User?     @relation(fields: [ownerId], references: [id])
+  ownerId      String?
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  tenantId     String
+  notes        Note[]
+  createdAt    DateTime  @default(now())
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  leadId    String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Ad {
+  id            String   @id @default(cuid())
+  title         String
+  imageUrl      String
+  destination   String
+  placement     AdPlacement
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId      String
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+enum AdPlacement {
+  HOME
+  LISTING
+  PROPERTY
+}
